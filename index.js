@@ -27,6 +27,24 @@ const apiGatewayConfig = {
   },
 }
 
+const appSyncConfig = {
+  usage: 'Simulate the AppSync service and serves λ locally',
+  lifecycleEvents: [
+    'initialize',
+    'start',
+  ],
+  options: {
+    port: {
+      usage: 'Port to listen on. Default: 3001',
+      shortcut: 'p',
+    },
+    'lambda-port': {
+      usage: 'Endpoint of a lambda simulation. Optional',
+      shortcut: 'l',
+    },
+  },
+}
+
 class Simulate {
   constructor(serverless, options) {
     const customConfig = serverless.service.custom || {}
@@ -34,7 +52,7 @@ class Simulate {
     this.serverless = serverless
     this.options = options
     this.simulateConfig = customConfig.simulate || {}
-    this.dist = this.simulateConfig.dist ? `/${this.simulateConfig.dist}` : ''
+    this.appSyncConfig = customConfig.appSync || {}
 
     Object.assign(
       this,
@@ -89,6 +107,7 @@ class Simulate {
           },
           serve: apiGatewayConfig,
           apigateway: apiGatewayConfig,
+          appsync: appSyncConfig,
           lambda: {
             usage: 'Simulate the λ API',
             lifecycleEvents: [
@@ -151,7 +170,41 @@ class Simulate {
       'simulate:apigateway:start': () => BbPromise.bind(this)
         .then(this.servicesStart)
         .then(this.apigatewayStart),
+
+      'simulate:appsync:initialize': () => BbPromise.bind(this)
+        .then(this.appsyncInit),
+
+      'simulate:appsync:start': () => BbPromise.bind(this)
+        .then(this.servicesStart)
+        .then(this.appsyncStart),
     }
+  }
+
+  appsyncInit() {
+    const lambdaPort = this.options['lambda-port']
+
+    if (!lambdaPort) return BbPromise.resolve()
+
+    const functions = config.getFunctions(this.serverless)
+
+    const logger = this.createLogger()
+    return lambda.register(lambdaPort, functions, logger)
+  }
+
+  appsyncStart() {
+    const lambdaPort = this.options['lambda-port']
+    const port = this.options.port || 3000
+
+    const graphqlFunc = config.getGraphqlFunc(this.serverless)
+    const endpoints = config.getEndpoints(this.serverless)
+
+    const logger = this.createLogger()
+    return serve.startWithAppsync(
+      graphqlFunc,
+      endpoints.endpoints,
+      endpoints.corsMethodsForPath,
+      port, lambdaPort, logger
+    )
   }
 
   servicesStart() {
@@ -190,7 +243,7 @@ class Simulate {
     const dbPath = this.options['db-path'] || defaultDbPath
 
     const logger = this.createLogger()
-    return lambda.start(port, dbPath, this.dist, logger)
+    return lambda.start(port, dbPath, logger)
   }
 
   register() {

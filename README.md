@@ -79,6 +79,11 @@ Run the API Gateway Simulation
 sls simulate apigateway -p 5000 --lambda-port 4000
 ```
 
+Run the AppSync GraphQL Simulation (with API Gateway Simulation)
+```
+sls simulate appsync -p 5000 --lambda-port 4000
+```
+
 Use the environment variables to configure the AWS SDK
 to use the local Lambda simulation. You can use the same
 technique with any other AWS SDK.

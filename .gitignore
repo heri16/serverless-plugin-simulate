@@ -11,3 +11,5 @@ coverage/
 npm-debug.log
 yarn-error.log
 .sls-simulate-registry
+
+package-lock.json
